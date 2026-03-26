@@ -1,0 +1,16 @@
+payroad:
+    providers:
+        # ── Mock card provider (works out of the box, no API keys needed) ─────────
+        mock_card:
+            factory: Payroad\Provider\InternalCard\InternalCardProviderFactory
+            config:
+                provider_name: mock_card
+                mode: charge
+
+        # ── Stripe (real payments — set STRIPE_* env vars in .env) ───────────────
+        stripe:
+            factory: Payroad\Provider\Stripe\StripeProviderFactory
+            config:
+                secret_key:      '%env(STRIPE_SECRET_KEY)%'
+                webhook_secret:  '%env(STRIPE_WEBHOOK_SECRET)%'
+                publishable_key: '%env(STRIPE_PUBLISHABLE_KEY)%'

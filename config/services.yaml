@@ -1,0 +1,28 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+
+    # ── Repositories ──────────────────────────────────────────────────────────
+
+    App\Repository\SqlitePaymentRepository:
+        arguments:
+            $dbPath: '%kernel.project_dir%/var/payroad.sqlite'
+
+    App\Repository\SqliteAttemptRepository:
+        arguments:
+            $dbPath: '%kernel.project_dir%/var/payroad.sqlite'
+
+    Payroad\Port\Repository\PaymentRepositoryInterface:
+        alias: App\Repository\SqlitePaymentRepository
+
+    Payroad\Port\Repository\PaymentAttemptRepositoryInterface:
+        alias: App\Repository\SqliteAttemptRepository
+
+    # ── Event dispatcher ──────────────────────────────────────────────────────
+
+    Payroad\Port\Event\DomainEventDispatcherInterface:
+        alias: App\Infrastructure\NullEventDispatcher
