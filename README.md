@@ -6,30 +6,51 @@ Includes a mock card provider that works out of the box, and optional Stripe int
 
 ---
 
-## Requirements
-
-- PHP 8.2+ with `pdo_sqlite` extension
-- Composer
-
----
-
-## Setup
+## Quick start (Docker)
 
 ```bash
 git clone https://github.com/payroad/quickstart payroad-quickstart
 cd payroad-quickstart
-
-composer install
-
-cp .env.example .env
-# edit .env and set APP_SECRET to any random string
-
-php -S localhost:8000 -t public
+docker build -t payroad-quickstart .
+docker run -p 8000:8000 payroad-quickstart
 ```
 
 Open [http://localhost:8000](http://localhost:8000) — you'll see a checkout page.
 
 Click **Pay** — the mock provider resolves the payment instantly with no API keys.
+
+---
+
+## Alternative: native PHP
+
+Requirements: PHP 8.2+ with `bcmath`, `pdo_sqlite` extensions, Composer.
+
+```bash
+composer install
+php -S localhost:8000 -t public
+```
+
+---
+
+## Enable Stripe
+
+Pass your keys as environment variables:
+
+```bash
+docker run -p 8000:8000 \
+  -e STRIPE_PUBLISHABLE_KEY=pk_test_... \
+  -e STRIPE_SECRET_KEY=sk_test_... \
+  -e STRIPE_WEBHOOK_SECRET=whsec_... \
+  payroad-quickstart
+```
+
+Forward webhooks locally (requires [Stripe CLI](https://stripe.com/docs/stripe-cli)):
+
+```bash
+stripe listen --forward-to localhost:8000/webhook/stripe
+```
+
+Refresh the page — a **Stripe** option appears in the provider selector.
 
 ---
 
@@ -55,23 +76,28 @@ Providers implement a clean interface. Your application wires them together.
 
 ---
 
-## Enable Stripe
+## API endpoints
 
-1. Add your keys to `.env`:
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Checkout form |
+| `POST` | `/pay` | Create payment + initiate attempt |
+| `GET` | `/pay/{id}/status` | Poll payment status |
+| `POST` | `/webhook/stripe` | Stripe webhook receiver |
 
-```env
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+`POST /pay` body:
+
+```json
+{ "amount": "19.99", "currency": "USD", "provider": "mock_card" }
 ```
 
-2. Forward webhooks locally:
+Response:
 
-```bash
-stripe listen --forward-to localhost:8000/webhook/stripe
+```json
+{ "paymentId": "...", "status": "succeeded", "clientToken": null }
 ```
 
-3. Refresh the page — a **Stripe** option appears in the provider selector.
+`clientToken` is the Stripe `client_secret` when using `stripe`. It is `null` for `mock_card`.
 
 ---
 
@@ -80,20 +106,40 @@ stripe listen --forward-to localhost:8000/webhook/stripe
 ```
 src/
   Controller/
-    PaymentController.php      # GET /, POST /pay, GET /pay/{id}/status, POST /webhook/stripe
+    PaymentController.php       # GET /, POST /pay, GET /pay/{id}/status, POST /webhook/stripe
   Repository/
     SqlitePaymentRepository.php
     SqliteAttemptRepository.php
   Infrastructure/
-    KnownCurrencies.php        # maps currency codes to precision
-    NullEventDispatcher.php    # discards domain events (replace with Messenger in production)
+    KnownCurrencies.php         # maps currency codes to precision
+    NullEventDispatcher.php     # discards domain events (replace with Messenger in production)
 config/
-  packages/payroad.yaml        # provider configuration
+  packages/payroad.yaml         # provider configuration
 templates/
-  checkout.html.twig           # minimal checkout form + Stripe.js
+  checkout.html.twig            # minimal checkout form + Stripe.js
 var/
-  payroad.sqlite               # auto-created on first request
+  payroad.sqlite                # auto-created on first request
 ```
+
+---
+
+## Local development (with editable core packages)
+
+If you're modifying `payroad-core` or providers locally, use Docker Compose — it mounts sibling repos directly:
+
+```bash
+# expected directory layout:
+# payroad/
+#   payroad-quickstart/
+#   payroad-core/
+#   stripe-provider/
+#   internal-card-provider/
+#   symfony-bridge/
+
+docker compose up --build
+```
+
+App runs on [http://localhost:8001](http://localhost:8001).
 
 ---
 
@@ -119,7 +165,6 @@ The domain emits `PaymentSucceeded`, not `StripePaymentSucceeded`.
 |------|--------------|
 | All payment flows (crypto, P2P, cash) | [payroad-symfony-demo](https://github.com/payroad/payroad-symfony-demo) |
 | Refunds, saved cards, auth/capture | [payroad-core use cases](https://github.com/payroad/payroad-core) |
-| Braintree, NOWPayments, CoinGate | Provider packages in the [payroad org](https://github.com/payroad) |
 | Domain model reference | [payroad/payroad-core README](https://github.com/payroad/payroad-core) |
 
 ---
