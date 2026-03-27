@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure;
 
-use Payroad\Domain\Event\DomainEvent;
+use Payroad\Domain\DomainEvent;
 use Payroad\Port\Event\DomainEventDispatcherInterface;
 
 /**

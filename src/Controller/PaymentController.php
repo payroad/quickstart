@@ -102,8 +102,8 @@ final class PaymentController extends AbstractController
         return $this->json([
             'paymentId' => $payment->getId()->value,
             'status'    => $payment->getStatus()->value,
-            'amount'    => $payment->getAmount()->getDecimalAmount(),
-            'currency'  => $payment->getAmount()->getCurrency()->code,
+            'amountMinor' => $payment->getAmount()->getMinorAmount(),
+            'currency'    => $payment->getAmount()->getCurrency()->code,
         ]);
     }
 

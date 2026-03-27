@@ -7,13 +7,14 @@
         "php": "^8.2",
         "ext-pdo": "*",
         "ext-pdo_sqlite": "*",
+        "payroad/internal-card-provider": "@dev",
         "payroad/payroad-core": "@dev",
         "payroad/stripe-provider": "@dev",
-        "payroad/internal-card-provider": "@dev",
         "payroad/symfony-bridge": "@dev",
         "symfony/framework-bundle": "^7.2",
-        "symfony/twig-bundle": "^7.2",
         "symfony/runtime": "^7.2",
+        "symfony/string": "^7.4",
+        "symfony/twig-bundle": "^7.2",
         "symfony/yaml": "^7.2"
     },
     "autoload": {

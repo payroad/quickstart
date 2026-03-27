@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/app
+      - ../payroad-core:/payroad-core
+      - ../stripe-provider:/stripe-provider
+      - ../internal-card-provider:/internal-card-provider
+      - ../symfony-bridge:/symfony-bridge
+      - /app/vendor
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "1"
+      APP_SECRET: quickstart-dev-secret
+      STRIPE_PUBLISHABLE_KEY: ""
+      STRIPE_SECRET_KEY: ""
+      STRIPE_WEBHOOK_SECRET: ""
