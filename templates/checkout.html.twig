@@ -31,7 +31,8 @@
 
     <label>Provider</label>
     <select id="provider">
-        <option value="mock_card">Mock card (instant, no keys needed)</option>
+        <option value="mock_card">Mock card (instant)</option>
+        <option value="mock_card_async">Mock async (webhook demo)</option>
         {% if stripe_publishable_key %}
         <option value="stripe">Stripe (real)</option>
         {% endif %}
@@ -40,6 +41,7 @@
     <div id="stripe-element" style="display:none"></div>
 
     <button id="pay-btn">Pay</button>
+    <button id="webhook-btn" style="display:none; margin-top:.75rem; background:#6b7280">Simulate webhook →</button>
     <div id="message"></div>
 </div>
 
@@ -70,6 +72,9 @@
     }
     {% endif %}
 
+    const webhookBtn = document.getElementById('webhook-btn');
+    let currentPaymentId = null;
+
     document.getElementById('pay-btn').addEventListener('click', async () => {
         const btn      = document.getElementById('pay-btn');
         const msg      = document.getElementById('message');
@@ -78,7 +83,8 @@
 
         btn.disabled = true;
         msg.className = '';
-        msg.style.display = 'none';
+        webhookBtn.style.display = 'none';
+        currentPaymentId = null;
 
         try {
             // Step 1: create payment + initiate attempt
@@ -101,16 +107,54 @@
             }
             {% endif %}
 
-            // Step 3: poll for final status
-            const status = await pollStatus(data.paymentId);
-            msg.textContent = `Payment ${status} ✓ (ID: ${data.paymentId})`;
-            msg.className = status === 'succeeded' ? 'success' : 'error';
+            // Step 3: poll for final status (quick check first)
+            const quickStatus = await pollStatus(data.paymentId, 2);
+            if (quickStatus === 'processing') {
+                // Async provider — show webhook button, let user trigger completion
+                currentPaymentId = data.paymentId;
+                msg.textContent = `Payment ${data.paymentId} is processing — click "Simulate webhook" to complete it.`;
+                msg.className = 'error';
+                msg.style.background = '#fffbeb';
+                msg.style.color = '#92400e';
+                webhookBtn.style.display = 'block';
+            } else {
+                msg.textContent = `Payment ${quickStatus} ✓ (ID: ${data.paymentId})`;
+                msg.className = quickStatus === 'succeeded' ? 'success' : 'error';
+            }
 
         } catch (e) {
             msg.textContent = e.message;
             msg.className = 'error';
         } finally {
             btn.disabled = false;
+        }
+    });
+
+    webhookBtn.addEventListener('click', async () => {
+        if (!currentPaymentId) return;
+        webhookBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/dev/webhook/${currentPaymentId}`, { method: 'POST' });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error ?? 'Webhook failed');
+            }
+
+            const status = await pollStatus(currentPaymentId);
+            const msg = document.getElementById('message');
+            msg.style.background = '';
+            msg.style.color = '';
+            msg.textContent = `Payment ${status} ✓ (ID: ${currentPaymentId})`;
+            msg.className = status === 'succeeded' ? 'success' : 'error';
+            webhookBtn.style.display = 'none';
+            currentPaymentId = null;
+        } catch (e) {
+            const msg = document.getElementById('message');
+            msg.textContent = e.message;
+            msg.className = 'error';
+        } finally {
+            webhookBtn.disabled = false;
         }
     });
 

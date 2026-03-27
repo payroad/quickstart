@@ -7,6 +7,12 @@ payroad:
                 provider_name: mock_card
                 mode: charge
 
+        # ── Async mock (stops at PROCESSING — use /dev/webhook to complete) ────────
+        mock_card_async:
+            factory: App\Provider\AsyncMockCardProviderFactory
+            config:
+                provider_name: mock_card_async
+
         # ── Stripe (real payments — set STRIPE_* env vars in .env) ───────────────
         stripe:
             factory: Payroad\Provider\Stripe\StripeProviderFactory

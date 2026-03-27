@@ -11,8 +11,11 @@ use Payroad\Application\UseCase\Payment\CreatePaymentCommand;
 use Payroad\Application\UseCase\Payment\CreatePaymentUseCase;
 use Payroad\Application\UseCase\Webhook\HandleWebhookCommand;
 use Payroad\Application\UseCase\Webhook\HandleWebhookUseCase;
+use Payroad\Domain\Attempt\AttemptStatus;
 use Payroad\Domain\Payment\CustomerId;
 use Payroad\Domain\Payment\PaymentId;
+use Payroad\Port\Provider\WebhookResult;
+use Payroad\Port\Repository\PaymentAttemptRepositoryInterface;
 use Payroad\Domain\Payment\PaymentMetadata;
 use Payroad\Domain\PaymentFlow\Card\CardAttemptData;
 use Payroad\Port\Provider\Card\CardAttemptContext;
@@ -26,10 +29,11 @@ use Symfony\Component\Routing\Attribute\Route;
 final class PaymentController extends AbstractController
 {
     public function __construct(
-        private readonly CreatePaymentUseCase        $createPayment,
-        private readonly InitiateCardAttemptUseCase  $initiateCardAttempt,
-        private readonly HandleWebhookUseCase        $handleWebhook,
-        private readonly PaymentRepositoryInterface  $payments,
+        private readonly CreatePaymentUseCase              $createPayment,
+        private readonly InitiateCardAttemptUseCase        $initiateCardAttempt,
+        private readonly HandleWebhookUseCase              $handleWebhook,
+        private readonly PaymentRepositoryInterface        $payments,
+        private readonly PaymentAttemptRepositoryInterface $attempts,
     ) {}
 
     // ── Checkout form ─────────────────────────────────────────────────────────
@@ -105,6 +109,50 @@ final class PaymentController extends AbstractController
             'amountMinor' => $payment->getAmount()->getMinorAmount(),
             'currency'    => $payment->getAmount()->getCurrency()->code,
         ]);
+    }
+
+    // ── Dev: simulate webhook ─────────────────────────────────────────────────
+
+    /**
+     * POST /dev/webhook/{id}
+     *
+     * Simulates an async webhook arriving for a payment — useful for demonstrating
+     * the mock_card_async provider without a real webhook source.
+     *
+     * Finds the latest non-terminal attempt for the payment and transitions it
+     * to SUCCEEDED via HandleWebhookUseCase, exactly as a real provider webhook would.
+     */
+    #[Route('/dev/webhook/{id}', methods: ['POST'])]
+    public function devWebhook(string $id): JsonResponse
+    {
+        $payment = $this->payments->findById(PaymentId::fromUuid($id));
+        if ($payment === null) {
+            return $this->json(['error' => 'Payment not found'], 404);
+        }
+
+        $attempts = $this->attempts->findByPaymentId(PaymentId::fromUuid($id));
+        $attempt  = null;
+        foreach (array_reverse($attempts) as $a) {
+            if (!$a->getStatus()->isTerminal()) {
+                $attempt = $a;
+                break;
+            }
+        }
+
+        if ($attempt === null) {
+            return $this->json(['error' => 'No non-terminal attempt found — payment may already be complete'], 422);
+        }
+
+        $this->handleWebhook->execute(new HandleWebhookCommand(
+            providerName: $attempt->getProviderName(),
+            result:       new WebhookResult(
+                providerReference: $attempt->getProviderReference(),
+                newStatus:         AttemptStatus::SUCCEEDED,
+                providerStatus:    'mock_webhook_succeeded',
+            ),
+        ));
+
+        return $this->json(['triggered' => true, 'attemptId' => $attempt->getId()->value]);
     }
 
     // ── Stripe webhook ────────────────────────────────────────────────────────
