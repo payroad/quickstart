@@ -9,11 +9,15 @@ use Payroad\Application\UseCase\Card\InitiateCardAttemptCommand;
 use Payroad\Application\UseCase\Card\InitiateCardAttemptUseCase;
 use Payroad\Application\UseCase\Payment\CreatePaymentCommand;
 use Payroad\Application\UseCase\Payment\CreatePaymentUseCase;
+use Payroad\Application\UseCase\Webhook\HandleRefundWebhookCommand;
+use Payroad\Application\UseCase\Webhook\HandleRefundWebhookUseCase;
 use Payroad\Application\UseCase\Webhook\HandleWebhookCommand;
 use Payroad\Application\UseCase\Webhook\HandleWebhookUseCase;
 use Payroad\Domain\Attempt\AttemptStatus;
 use Payroad\Domain\Payment\CustomerId;
 use Payroad\Domain\Payment\PaymentId;
+use Payroad\Port\Provider\RefundWebhookResult;
+use Payroad\Port\Provider\ProviderRegistryInterface;
 use Payroad\Port\Provider\WebhookResult;
 use Payroad\Port\Repository\PaymentAttemptRepositoryInterface;
 use Payroad\Domain\Payment\PaymentMetadata;
@@ -32,6 +36,8 @@ final class PaymentController extends AbstractController
         private readonly CreatePaymentUseCase              $createPayment,
         private readonly InitiateCardAttemptUseCase        $initiateCardAttempt,
         private readonly HandleWebhookUseCase              $handleWebhook,
+        private readonly HandleRefundWebhookUseCase        $handleRefundWebhook,
+        private readonly ProviderRegistryInterface         $providers,
         private readonly PaymentRepositoryInterface        $payments,
         private readonly PaymentAttemptRepositoryInterface $attempts,
     ) {}
@@ -166,14 +172,30 @@ final class PaymentController extends AbstractController
     #[Route('/webhook/stripe', methods: ['POST'])]
     public function stripeWebhook(Request $request): Response
     {
-        $this->handleWebhook->execute(new HandleWebhookCommand(
-            providerName: 'stripe',
-            payload:      $request->toArray(),
-            headers:      array_merge(
-                $request->headers->all(),
-                ['raw-body' => [$request->getContent()]],
-            ),
-        ));
+        $headers = array_merge(
+            $request->headers->all(),
+            ['raw-body' => [$request->getContent()]],
+        );
+
+        $result = $this->providers
+            ->forCard('stripe')
+            ->parseIncomingWebhook($request->toArray(), $headers);
+
+        if ($result === null) {
+            return new Response('', 200); // unhandled event type — ignore
+        }
+
+        if ($result instanceof RefundWebhookResult) {
+            $this->handleRefundWebhook->execute(new HandleRefundWebhookCommand(
+                providerName: 'stripe',
+                result:       $result,
+            ));
+        } else {
+            $this->handleWebhook->execute(new HandleWebhookCommand(
+                providerName: 'stripe',
+                result:       $result,
+            ));
+        }
 
         return new Response('', 200);
     }

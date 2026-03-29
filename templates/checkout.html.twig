@@ -9,42 +9,86 @@
     {% endif %}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .card { background: #fff; border-radius: 12px; padding: 2rem; width: 100%; max-width: 420px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-        h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1.5rem; color: #111; }
-        label { display: block; font-size: .85rem; color: #555; margin-bottom: .35rem; }
-        input, select { width: 100%; padding: .6rem .8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; }
-        button { width: 100%; padding: .75rem; background: #0070f3; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; }
-        button:disabled { opacity: .6; cursor: not-allowed; }
-        #stripe-element { border: 1px solid #ddd; border-radius: 8px; padding: .75rem; margin-bottom: 1rem; }
-        #message { margin-top: 1rem; padding: .75rem; border-radius: 8px; font-size: .9rem; display: none; }
-        #message.success { background: #f0fdf4; color: #166534; display: block; }
-        #message.error   { background: #fef2f2; color: #991b1b; display: block; }
+        body { font-family: system-ui, sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .layout { display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; width: 100%; max-width: 900px; align-items: start; }
+        @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+
+        .panel { background: #fff; border-radius: 12px; padding: 1.75rem; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+        h2 { font-size: 1rem; font-weight: 600; color: #111; margin-bottom: 1.25rem; }
+
+        label { display: block; font-size: .82rem; color: #666; margin-bottom: .3rem; }
+        input { width: 100%; padding: .6rem .8rem; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 1rem; margin-bottom: 1.1rem; outline: none; }
+        input:focus { border-color: #0070f3; }
+
+        .toggle-group { display: flex; gap: .5rem; margin-bottom: 1.1rem; }
+        .toggle-btn { flex: 1; padding: .5rem .4rem; background: #fff; color: #555; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: .82rem; font-weight: 500; cursor: pointer; transition: all .15s; }
+        .toggle-btn.active { background: #eff6ff; border-color: #0070f3; color: #0070f3; }
+        .toggle-btn:hover:not(.active) { border-color: #9ca3af; }
+
+        #stripe-element { border: 1.5px solid #e5e7eb; border-radius: 8px; padding: .75rem; margin-bottom: 1.1rem; }
+
+        .btn-pay { width: 100%; padding: .75rem; background: #0070f3; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .btn-pay:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-webhook { width: 100%; padding: .65rem; background: #374151; color: #fff; border: none; border-radius: 8px; font-size: .9rem; font-weight: 500; cursor: pointer; margin-top: .75rem; display: none; }
+        .btn-webhook:disabled { opacity: .55; cursor: not-allowed; }
+
+        /* Events panel */
+        .events-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .events-header h2 { margin: 0; }
+        .btn-clear { font-size: .78rem; color: #9ca3af; background: none; border: none; cursor: pointer; padding: 0; width: auto; }
+        .btn-clear:hover { color: #6b7280; }
+
+        .event-list { display: flex; flex-direction: column; gap: .6rem; height: 420px; overflow-y: auto; }
+        .event-empty { font-size: .85rem; color: #9ca3af; text-align: center; padding: 2rem 0; }
+
+        .event { border-radius: 8px; padding: .7rem .9rem; font-size: .82rem; border-left: 3px solid transparent; }
+        .event-time { font-size: .72rem; color: #9ca3af; margin-bottom: .2rem; font-variant-numeric: tabular-nums; }
+        .event-title { font-weight: 600; margin-bottom: .15rem; }
+        .event-detail { color: #6b7280; word-break: break-all; }
+
+        .event.info    { background: #f8fafc; border-color: #94a3b8; }
+        .event.success { background: #f0fdf4; border-color: #22c55e; }
+        .event.error   { background: #fef2f2; border-color: #ef4444; }
+        .event.pending { background: #fffbeb; border-color: #f59e0b; }
     </style>
 </head>
 <body>
-<div class="card">
-    <h1>Payroad Quickstart</h1>
+<div class="layout">
 
-    <label>Amount (USD)</label>
-    <input id="amount" type="number" min="1" step="0.01" value="19.99">
+    <!-- Left: payment form -->
+    <div class="panel">
+        <h2>Payroad Quickstart</h2>
 
-    <label>Provider</label>
-    <select id="provider">
-        <option value="mock_card">Mock card (instant)</option>
-        <option value="mock_card_async">Mock async (webhook demo)</option>
-        {% if stripe_publishable_key %}
-        <option value="stripe">Stripe (real)</option>
-        {% endif %}
-    </select>
+        <label>Amount (USD)</label>
+        <input id="amount" type="number" min="0.01" step="0.01" value="19.99">
 
-    <div id="stripe-element" style="display:none"></div>
+        <label>Provider</label>
+        <div class="toggle-group">
+            <button class="toggle-btn active" data-provider="mock_card_async">Mock async</button>
+            <button class="toggle-btn" data-provider="mock_card">Mock instant</button>
+            {% if stripe_publishable_key %}
+            <button class="toggle-btn" data-provider="stripe">Stripe</button>
+            {% endif %}
+        </div>
 
-    <button id="pay-btn">Pay</button>
-    <button id="webhook-btn" style="display:none; margin-top:.75rem; background:#6b7280">Simulate webhook →</button>
-    <div id="message"></div>
+        <div id="stripe-element" style="display:none"></div>
+
+        <button class="btn-pay" id="pay-btn">Pay</button>
+        <button class="btn-webhook" id="webhook-btn">Simulate webhook →</button>
+    </div>
+
+    <!-- Right: event log -->
+    <div class="panel">
+        <div class="events-header">
+            <h2>Events</h2>
+            <button class="btn-clear" id="clear-btn">Clear</button>
+        </div>
+        <div class="event-list" id="event-list">
+            <div class="event-empty" id="event-empty">Events will appear here as payments are processed.</div>
+        </div>
+    </div>
+
 </div>
-
 <script>
     {% if stripe_publishable_key %}
     const STRIPE_KEY = '{{ stripe_publishable_key }}';
@@ -53,78 +97,92 @@
     let stripeEl = null;
     {% endif %}
 
-    const providerSelect = document.getElementById('provider');
-    const stripeDiv      = document.getElementById('stripe-element');
+    let selectedProvider = 'mock_card_async';
+    const stripeDiv = document.getElementById('stripe-element');
 
-    providerSelect.addEventListener('change', () => {
-        const isStripe = providerSelect.value === 'stripe';
-        stripeDiv.style.display = isStripe ? 'block' : 'none';
-        {% if stripe_publishable_key %}
-        if (isStripe && !stripeElements) initStripeElement();
-        {% endif %}
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedProvider = btn.dataset.provider;
+            const isStripe = selectedProvider === 'stripe';
+            stripeDiv.style.display = isStripe ? 'block' : 'none';
+            {% if stripe_publishable_key %}
+            if (isStripe && !stripeElements) {
+                stripeElements = stripe.elements();
+                stripeEl = stripeElements.create('card');
+                stripeEl.mount('#stripe-element');
+            }
+            {% endif %}
+        });
     });
 
-    {% if stripe_publishable_key %}
-    function initStripeElement() {
-        stripeElements = stripe.elements();
-        stripeEl = stripeElements.create('card');
-        stripeEl.mount('#stripe-element');
+    // Event log
+    function logEvent(type, title, detail) {
+        document.getElementById('event-empty')?.remove();
+        const list = document.getElementById('event-list');
+        const now  = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        const el   = document.createElement('div');
+        el.className = `event ${type}`;
+        el.innerHTML = `<div class="event-time">${now}</div>
+                        <div class="event-title">${title}</div>
+                        ${detail ? `<div class="event-detail">${detail}</div>` : ''}`;
+        list.prepend(el);
     }
-    {% endif %}
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        const list = document.getElementById('event-list');
+        list.innerHTML = '<div class="event-empty" id="event-empty">Events will appear here as payments are processed.</div>';
+        webhookBtn.style.display = 'none';
+        currentPaymentId = null;
+    });
 
     const webhookBtn = document.getElementById('webhook-btn');
     let currentPaymentId = null;
 
     document.getElementById('pay-btn').addEventListener('click', async () => {
-        const btn      = document.getElementById('pay-btn');
-        const msg      = document.getElementById('message');
-        const amount   = document.getElementById('amount').value;
-        const provider = providerSelect.value;
+        const btn    = document.getElementById('pay-btn');
+        const amount = document.getElementById('amount').value;
 
         btn.disabled = true;
-        msg.className = '';
         webhookBtn.style.display = 'none';
         currentPaymentId = null;
 
         try {
-            // Step 1: create payment + initiate attempt
-            const res = await fetch('/pay', {
+            logEvent('info', `POST /pay`, `provider: ${selectedProvider}, amount: ${amount} USD`);
+
+            const res  = await fetch('/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount, currency: 'USD', provider }),
+                body: JSON.stringify({ amount, currency: 'USD', provider: selectedProvider }),
             });
             const data = await res.json();
-
             if (!res.ok) throw new Error(data.error ?? 'Request failed');
 
-            // Step 2: if Stripe — confirm via Stripe.js
+            logEvent('info', `← 200 OK`, `paymentId: ${data.paymentId}<br>status: ${data.status}`);
+
             {% if stripe_publishable_key %}
-            if (provider === 'stripe' && data.clientToken) {
+            if (selectedProvider === 'stripe' && data.clientToken) {
+                logEvent('info', 'Stripe.js confirmCardPayment', data.paymentId);
                 const { error } = await stripe.confirmCardPayment(data.clientToken, {
                     payment_method: { card: stripeEl },
                 });
                 if (error) throw new Error(error.message);
+                logEvent('info', 'Stripe.js confirmed', 'waiting for webhook...');
             }
             {% endif %}
 
-            // Step 3: poll for final status (quick check first)
-            const quickStatus = await pollStatus(data.paymentId, 2);
-            if (quickStatus === 'processing') {
-                // Async provider — show webhook button, let user trigger completion
+            if (data.status === 'processing') {
                 currentPaymentId = data.paymentId;
-                msg.textContent = `Payment ${data.paymentId} is processing — click "Simulate webhook" to complete it.`;
-                msg.className = 'error';
-                msg.style.background = '#fffbeb';
-                msg.style.color = '#92400e';
+                logEvent('pending', 'Payment is processing', 'Webhook has not arrived yet — click "Simulate webhook →"');
                 webhookBtn.style.display = 'block';
             } else {
-                msg.textContent = `Payment ${quickStatus} ✓ (ID: ${data.paymentId})`;
-                msg.className = quickStatus === 'succeeded' ? 'success' : 'error';
+                const status = await pollStatus(data.paymentId);
+                logEvent(status === 'succeeded' ? 'success' : 'error', `Payment ${status}`, `ID: ${data.paymentId}`);
             }
 
         } catch (e) {
-            msg.textContent = e.message;
-            msg.className = 'error';
+            logEvent('error', 'Error', e.message);
         } finally {
             btn.disabled = false;
         }
@@ -135,24 +193,23 @@
         webhookBtn.disabled = true;
 
         try {
+            logEvent('info', `POST /dev/webhook/${currentPaymentId}`, 'simulating provider callback');
+
             const res = await fetch(`/dev/webhook/${currentPaymentId}`, { method: 'POST' });
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.error ?? 'Webhook failed');
             }
 
+            logEvent('info', '← Webhook handled', 'HandleWebhookUseCase applied transition');
+
             const status = await pollStatus(currentPaymentId);
-            const msg = document.getElementById('message');
-            msg.style.background = '';
-            msg.style.color = '';
-            msg.textContent = `Payment ${status} ✓ (ID: ${currentPaymentId})`;
-            msg.className = status === 'succeeded' ? 'success' : 'error';
+            logEvent(status === 'succeeded' ? 'success' : 'error', `Payment ${status}`, `ID: ${currentPaymentId}`);
+
             webhookBtn.style.display = 'none';
             currentPaymentId = null;
         } catch (e) {
-            const msg = document.getElementById('message');
-            msg.textContent = e.message;
-            msg.className = 'error';
+            logEvent('error', 'Webhook error', e.message);
         } finally {
             webhookBtn.disabled = false;
         }

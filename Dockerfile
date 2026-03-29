@@ -1,7 +1,8 @@
 FROM php:8.2-cli-alpine
 
 RUN apk add --no-cache git unzip sqlite-dev \
- && docker-php-ext-install bcmath pdo pdo_sqlite
+ && docker-php-ext-install bcmath pdo pdo_sqlite \
+ && echo "opcache.enable=0" > /usr/local/etc/php/conf.d/opcache-disable.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
