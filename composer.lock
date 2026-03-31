@@ -72,12 +72,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/payroad/internal-card-provider.git",
-                "reference": "a54346404b1bcd863d1b41f7c4d8bbe7eaf32547"
+                "reference": "07698890e76e73f6a4b9a63af3cedf1051df30e9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/payroad/internal-card-provider/zipball/a54346404b1bcd863d1b41f7c4d8bbe7eaf32547",
-                "reference": "a54346404b1bcd863d1b41f7c4d8bbe7eaf32547",
+                "url": "https://api.github.com/repos/payroad/internal-card-provider/zipball/07698890e76e73f6a4b9a63af3cedf1051df30e9",
+                "reference": "07698890e76e73f6a4b9a63af3cedf1051df30e9",
                 "shasum": ""
             },
             "require": {
@@ -99,7 +99,7 @@
                 "source": "https://github.com/payroad/internal-card-provider/tree/main",
                 "issues": "https://github.com/payroad/internal-card-provider/issues"
             },
-            "time": "2026-03-26T12:12:47+00:00"
+            "time": "2026-03-29T08:40:51+00:00"
         },
         {
             "name": "payroad/payroad-core",
