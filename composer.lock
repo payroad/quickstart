@@ -151,12 +151,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/payroad/stripe-provider.git",
-                "reference": "3e2a6b2bc89bff27b5401f5c29c4be6057f4386c"
+                "reference": "d54543435521311cb4399bb8f70ad9d8b1ee51e3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/payroad/stripe-provider/zipball/3e2a6b2bc89bff27b5401f5c29c4be6057f4386c",
-                "reference": "3e2a6b2bc89bff27b5401f5c29c4be6057f4386c",
+                "url": "https://api.github.com/repos/payroad/stripe-provider/zipball/d54543435521311cb4399bb8f70ad9d8b1ee51e3",
+                "reference": "d54543435521311cb4399bb8f70ad9d8b1ee51e3",
                 "shasum": ""
             },
             "require": {
@@ -184,7 +184,7 @@
                 "source": "https://github.com/payroad/stripe-provider/tree/main",
                 "issues": "https://github.com/payroad/stripe-provider/issues"
             },
-            "time": "2026-03-26T13:27:28+00:00"
+            "time": "2026-03-31T20:07:40+00:00"
         },
         {
             "name": "payroad/symfony-bridge",

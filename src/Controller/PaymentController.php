@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Infrastructure\KnownCurrencies;
+use Payroad\Application\Exception\ProviderNotFoundException;
 use Payroad\Application\UseCase\Card\InitiateCardAttemptCommand;
 use Payroad\Application\UseCase\Card\InitiateCardAttemptUseCase;
 use Payroad\Application\UseCase\Payment\CreatePaymentCommand;
@@ -69,9 +70,23 @@ final class PaymentController extends AbstractController
     public function pay(Request $request): JsonResponse
     {
         $body     = $request->toArray();
-        $currency = KnownCurrencies::get($body['currency'] ?? 'USD');
-        $amount   = \Payroad\Domain\Money\Money::ofDecimal($body['amount'] ?? '10.00', $currency);
         $provider = $body['provider'] ?? 'mock_card';
+
+        try {
+            $currency = KnownCurrencies::get($body['currency'] ?? 'USD');
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+
+        try {
+            $amount = \Payroad\Domain\Money\Money::ofDecimal($body['amount'] ?? '10.00', $currency);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+
+        if ($amount->isZero()) {
+            return $this->json(['error' => 'Amount must be greater than zero.'], 400);
+        }
 
         $payment = $this->createPayment->execute(new CreatePaymentCommand(
             amount:     $amount,
@@ -79,14 +94,18 @@ final class PaymentController extends AbstractController
             metadata:   PaymentMetadata::fromArray($body['metadata'] ?? []),
         ));
 
-        $attempt = $this->initiateCardAttempt->execute(new InitiateCardAttemptCommand(
-            paymentId:    $payment->getId(),
-            providerName: $provider,
-            context:      new CardAttemptContext(
-                customerIp:       $request->getClientIp() ?? '0.0.0.0',
-                browserUserAgent: $request->headers->get('User-Agent', ''),
-            ),
-        ));
+        try {
+            $attempt = $this->initiateCardAttempt->execute(new InitiateCardAttemptCommand(
+                paymentId:    $payment->getId(),
+                providerName: $provider,
+                context:      new CardAttemptContext(
+                    customerIp:       $request->getClientIp() ?? '0.0.0.0',
+                    browserUserAgent: $request->headers->get('User-Agent', ''),
+                ),
+            ));
+        } catch (ProviderNotFoundException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         /** @var CardAttemptData $data */
         $data = $attempt->getData();
