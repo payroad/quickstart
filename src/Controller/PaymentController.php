@@ -22,7 +22,7 @@ use Payroad\Port\Provider\ProviderRegistryInterface;
 use Payroad\Port\Provider\WebhookResult;
 use Payroad\Port\Repository\PaymentAttemptRepositoryInterface;
 use Payroad\Domain\Payment\PaymentMetadata;
-use Payroad\Domain\PaymentFlow\Card\CardAttemptData;
+use Payroad\Domain\Channel\Card\CardAttemptData;
 use Payroad\Port\Provider\Card\CardAttemptContext;
 use Payroad\Port\Repository\PaymentRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
